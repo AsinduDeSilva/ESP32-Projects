@@ -2,14 +2,16 @@
 #include <WebServer.h>
 #include <Update.h>
 
-const char* ssid = "SLT Repeat";
-const char* password = "JT%479#jAB";
+const char* ssid = "Redmi 13C";
+const char* password = "19901990";
 
 const int ledPin = 2;
 
 WebServer server(80);
 
 TaskHandle_t BlinkTaskHandle;
+
+unsigned long startTime;
 
 
 void BlinkTask(void * parameter) {
@@ -53,6 +55,27 @@ void handleBlink() {
   server.send(303);
 }
 
+void handleMetrics() {
+  unsigned long uptime = (millis() - startTime) / 1000;
+
+  uint32_t freeHeap = ESP.getFreeHeap();
+  uint32_t totalHeap = ESP.getHeapSize();
+  float heapUsagePercent = 100.0 * (totalHeap - freeHeap) / totalHeap;
+
+  String json = "{";
+  json += "\"uptime\":" + String(uptime) + ",";
+  json += "\"freeHeapBytes\":" + String(freeHeap) + ",";
+  json += "\"totalHeapBytes\":" + String(totalHeap) + ",";
+  json += "\"heapUsagePercent\":" + String(100.0 * (totalHeap - freeHeap) / totalHeap, 2) + ",";
+  json += "\"chipTemperatureCelcius\":" + String(temperatureRead()) + ",";
+  json += "\"cpuFreqMHz\":" + String(ESP.getCpuFreqMHz()) + ",";
+  json += "\"rssi\":" + String(WiFi.RSSI()) + ",";
+  json += "\"sdkVersion\":\"" + String(ESP.getSdkVersion()) + "\"";
+  json += "}";
+
+  server.send(200, "application/json", json);
+}
+
 void handleUpdate() {
   String html = R"rawliteral(
     <h2>OTA Firmware Update</h2>
@@ -93,6 +116,7 @@ void handleUpdateUpload() {
   }
 }
 
+
 void setup() {
   Serial.begin(115200);
   pinMode(ledPin, OUTPUT);
@@ -115,6 +139,7 @@ void setup() {
   server.on("/on", handleOn);
   server.on("/off", handleOff);
   server.on("/blink", handleBlink);
+  server.on("/metrics", handleMetrics);
   server.on("/update", HTTP_GET, handleUpdate);
   server.on("/update", HTTP_POST, []() {}, handleUpdateUpload);
 
