@@ -5,6 +5,9 @@
 const char* ssid = "Redmi 13C";
 const char* password = "19901990";
 
+const char* http_username = "admin";
+const char* http_password = "12345";
+
 const int ledPin = 2;
 
 WebServer server(80);
@@ -13,6 +16,14 @@ TaskHandle_t BlinkTaskHandle;
 
 unsigned long startTime;
 
+
+bool isAuthenticated() {
+  if (!server.authenticate(http_username, http_password)) {
+    server.requestAuthentication();
+    return false;
+  }
+  return true;
+}
 
 void BlinkTask(void * parameter) {
   while (true) {
@@ -25,6 +36,8 @@ void BlinkTask(void * parameter) {
 }
 
 void handleRoot() {
+  if (!isAuthenticated()) return; 
+
   String html = "<h2>ESP32 Web Server</h2>";
   html += "<p><a href=\"/on\">Turn LED ON</a></p>";
   html += "<p><a href=\"/off\">Turn LED OFF</a></p>";
@@ -34,6 +47,8 @@ void handleRoot() {
 }
 
 void handleOn() {
+  if (!isAuthenticated()) return; 
+
   vTaskSuspend(BlinkTaskHandle);
   digitalWrite(ledPin, HIGH);
   Serial.println("LED On");
@@ -42,6 +57,8 @@ void handleOn() {
 }
 
 void handleOff() {
+  if (!isAuthenticated()) return; 
+
   vTaskSuspend(BlinkTaskHandle);
   digitalWrite(ledPin, LOW);
   Serial.println("LED Off");
@@ -50,12 +67,16 @@ void handleOff() {
 }
 
 void handleBlink() {
+  if (!isAuthenticated()) return; 
+
   vTaskResume(BlinkTaskHandle);
   server.sendHeader("Location", "/");
   server.send(303);
 }
 
 void handleMetrics() {
+  if (!isAuthenticated()) return; 
+
   unsigned long uptime = (millis() - startTime) / 1000;
 
   uint32_t freeHeap = ESP.getFreeHeap();
@@ -77,6 +98,8 @@ void handleMetrics() {
 }
 
 void handleUpdate() {
+  if (!isAuthenticated()) return; 
+  
   String html = R"rawliteral(
     <h2>OTA Firmware Update</h2>
     <form method='POST' action='/update' enctype='multipart/form-data' onsubmit='showMessage()'>

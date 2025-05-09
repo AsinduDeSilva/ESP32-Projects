@@ -5,6 +5,9 @@
 const char* ssid = "Redmi 13C";
 const char* password = "19901990";
 
+const char* http_username = "admin";
+const char* http_password = "12345";
+
 const int ledPin = 2;
 
 WebServer server(80);
@@ -12,7 +15,17 @@ WebServer server(80);
 unsigned long startTime;
 
 
+bool isAuthenticated() {
+  if (!server.authenticate(http_username, http_password)) {
+    server.requestAuthentication();
+    return false;
+  }
+  return true;
+}
+
 void handleRoot() {
+  if (!isAuthenticated()) return; 
+
   String html = "<h2>ESP32 Web Server</h2>";
   html += "<p><a href=\"/on\">Turn LED ON</a></p>";
   html += "<p><a href=\"/off\">Turn LED OFF</a></p>";
@@ -21,18 +34,24 @@ void handleRoot() {
 }
 
 void handleOn() {
+  if (!isAuthenticated()) return; 
+
   digitalWrite(ledPin, HIGH);
   server.sendHeader("Location", "/");
   server.send(303);
 }
 
 void handleOff() {
+  if (!isAuthenticated()) return; 
+
   digitalWrite(ledPin, LOW);
   server.sendHeader("Location", "/");
   server.send(303);
 }
 
 void handleMetrics() {
+  if (!isAuthenticated()) return; 
+
   unsigned long uptime = (millis() - startTime) / 1000;
 
   uint32_t freeHeap = ESP.getFreeHeap();
@@ -54,6 +73,8 @@ void handleMetrics() {
 }
 
 void handleUpdate() {
+  if (!isAuthenticated()) return; 
+
   String html = R"rawliteral(
     <h2>OTA Firmware Update</h2>
     <form method='POST' action='/update' enctype='multipart/form-data' onsubmit='showMessage()'>
@@ -70,6 +91,8 @@ void handleUpdate() {
 }
 
 void handleUpdateUpload() {
+  if (!isAuthenticated()) return; 
+  
   HTTPUpload& upload = server.upload();
   if (upload.status == UPLOAD_FILE_START) {
     Serial.printf("Update: %s\n", upload.filename.c_str());
